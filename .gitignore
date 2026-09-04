@@ -54,6 +54,6 @@ dkms.conf
 # debug information files
 *.dwo
 compile/.defs
-compile/.defs
 compile/.vers_num
+compile/version
 compile/version
