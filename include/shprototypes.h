@@ -78,3 +78,10 @@ extern	shellcmd  xsh_uptime	(int32, char *[]);
 
 /* in file xsh_help.c */
 extern	shellcmd  xsh_help	(int32, char *[]);
+
+/* FOR TESTING CASCADING KILL FUNCTIONALITY */
+/* in file xsh_spawn.c */
+extern	shellcmd  xsh_spawn	(int32, char *[]);
+
+/* in file xsh_spawnkill.c */
+extern	shellcmd  xsh_spawnkill	(int32, char *[]);
