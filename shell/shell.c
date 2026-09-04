@@ -33,7 +33,7 @@ const	struct	cmdent	cmdtab[] = {
 	{"?",		FALSE,	xsh_help},
 	/* COMMANDS USED FOR TESTING KILL BEHAVIOR */
 	{"spawn",	FALSE,	xsh_spawn},
-	{"unsusp",	FALSE,	xsh_spawnkill}
+	{"spawnkill",	FALSE,	xsh_spawnkill}
 
 };
 
