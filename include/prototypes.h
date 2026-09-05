@@ -619,8 +619,12 @@ extern	void	xdone(void);
 /* in file yield.c */
 extern	syscall	yield(void);
 
+/* PROJECT 1 FUNCTIONS */
 /* in file spawn.c */
 extern	process	spawn(uint32);
+
+/* in file setsystem.c*/
+extern syscall setsystem(pid32);
 
 /* NETWORK BYTE ORDER CONVERSION NOT NEEDED ON A BIG-ENDIAN COMPUTER */
 #define	htons(x)   ( ( 0xff & ((x)>>8) ) | ( (0xff & (x)) << 8 ) )
