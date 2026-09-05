@@ -56,6 +56,7 @@ shellcmd xsh_spawn(int nargs, char *args[]) {
 	}
 
     resume(create(spawn, 512, 150, "spawn root", 1, depth));
-
+	send(proctab[currpid].prparent, currpid);
+	suspend(currpid);
 	return 0;
 }

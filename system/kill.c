@@ -12,6 +12,7 @@ syscall	kill(
 {
 	intmask	mask;			/* Saved interrupt mask		*/
 	struct	procent *prptr;		/* Ptr to process's table entry	*/
+	struct	procent *childptr;		/* Ptr to process's table entry	*/
 	int32	i;			/* Index into descriptors	*/
 
 	mask = disable();
@@ -23,6 +24,16 @@ syscall	kill(
 
 	if (--prcount <= 1) {		/* Last user process completes	*/
 		xdone();
+	}
+
+	if (prptr->user_process) {
+		for (i = 0; i < NPROC; i++) {
+			childptr = &proctab[i];
+			if (childptr->prstate == PR_FREE || childptr->prparent != pid) {  /* skip unused slots	*/
+				continue;
+			}
+			kill(i);
+		}
 	}
 
 	send(prptr->prparent, pid);
