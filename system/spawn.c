@@ -22,6 +22,7 @@ process spawn(
         chprio(currpid, getprio(currpid) - 1);
     }
     while (TRUE) {
+        suspend(currpid);
         killpid = (pid32)receive();
         kill(killpid);
     }

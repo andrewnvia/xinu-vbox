@@ -75,6 +75,7 @@ shellcmd xsh_spawnkill(int nargs, char *args[]) {
 		return 1;
 	}
 	send(wakepid, killpid);
+	ready(wakepid);
 
 	return 0;
 }
