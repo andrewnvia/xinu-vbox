@@ -10,19 +10,18 @@
  */
 shellcmd xsh_spawn(int nargs, char *args[]) {
 
-	int32	retval;			/* return value			*/
-	pid32	pid;			/* ID of process to kill	*/
+	pid32	depth;			/* ID of process to kill	*/
 	char	ch;			/* next character of argument	*/
 	char	*chptr;			/* walks along argument string	*/
 
 	/* Output info for '--help' argument */
 
 	if (nargs == 2 && strncmp(args[1], "--help", 7) == 0) {
-		printf("Usage: %s PID\n\n", args[0]);
+		printf("Usage: %s Depth\n\n", args[0]);
 		printf("Description:\n");
-		printf("\tterminates a process\n");
+		printf("\tCreates a binary tree of processes Depth deep. Each one can be awoken with a message containing a process to kill.\n");
 		printf("Options:\n");
-		printf("\tPID \tthe ID of a process to terminate\n");
+		printf("\tDepth \tThe depth of the tree to create\n");
 		printf("\t--help\tdisplay this help and exit\n");
 		return OK;
 	}
@@ -40,27 +39,23 @@ shellcmd xsh_spawn(int nargs, char *args[]) {
 
 	chptr = args[1];
 	ch = *chptr++;
-	pid = 0;
+	depth = 0;
 	while(ch != NULLCH) {
 		if ( (ch < '0') || (ch > '9') ) {
-			fprintf(stderr, "%s: non-digit in process ID\n",
+			fprintf(stderr, "%s: non-digit in Depth\n",
 				args[0]);
 			return 1;
 		}
-		pid = 10*pid + (ch - '0');
+		depth = 10*depth + (ch - '0');
 		ch = *chptr++;
 	}
-	if (pid == 0) {
-		fprintf(stderr, "%s: cannot kill the null process\n",
+	if (depth == 0) {
+		fprintf(stderr, "%s: cannot create tree of depth 0\n",
 			args[0]);
 		return 1;
 	}
 
-	retval = kill(pid);
-	if (retval == SYSERR) {
-		fprintf(stderr, "%s: cannot kill process %d\n",
-			args[0], pid);
-		return 1;
-	}
+    resume(create(spawn, 512, 150, "spawn root", 1, depth));
+
 	return 0;
 }
