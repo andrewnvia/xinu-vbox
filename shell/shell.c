@@ -92,6 +92,9 @@ process	shell (
 	char	*args[SHELL_MAXTOK];	/* Argument vector passed to	*/
 					/*   builtin commands		*/
 
+	/* Set as system process */
+	/* (Necessary here due to restrictions around editing main.c) */
+	setsystem(currpid);
 	/* Print shell banner and startup message */
 
 	fprintf(dev, "\n\n%s%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",

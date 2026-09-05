@@ -84,8 +84,8 @@ void	nulluser()
 
 	/* Create a process to finish startup and start main */
 
-	resume(create((void *)startup, INITSTK, INITPRIO,
-					"Startup process", 0, NULL));
+	resume(setsystem(create((void *)startup, INITSTK, INITPRIO,
+					"Startup process", 0, NULL)));
 
 	/* Become the Null process (i.e., guarantee that the CPU has	*/
 	/*  something to run when no other process is ready to execute)	*/
@@ -128,8 +128,8 @@ local process	startup(void)
 
 	/* Create a process to execute function main() */
 
-	resume(create((void *)main, INITSTK, INITPRIO,
-					"Main process", 0, NULL));
+	resume(setsystem(create((void *)main, INITSTK, INITPRIO,
+					"Main process", 0, NULL)));
 
 	/* Startup process exits at this point */
 
@@ -191,6 +191,7 @@ static	void	sysinit()
 	prptr->prstkbase = getstk(NULLSTK);
 	prptr->prstklen = NULLSTK;
 	prptr->prstkptr = 0;
+	prptr->user_process = FALSE;
 	currpid = NULLPROC;
 	
 	/* Initialize semaphores */
