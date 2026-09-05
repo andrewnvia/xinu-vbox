@@ -7,9 +7,7 @@
  *------------------------------------------------------------------------
  */
 process spawn(
-        uint32  depth,
-        uint32  prio
-
+        uint32  depth
     )
 {
     pid32       killpid;
@@ -17,8 +15,8 @@ process spawn(
     pid32       process2;
     if (depth > 1) {
         chprio(currpid, getprio(currpid) + 1);
-        process1 = create(spawn, 512, prio, "spawn child", 2, depth-1, prio);
-        process2 = create(spawn, 512, prio, "spawn child", 2, depth-1, prio);
+        process1 = create(spawn, 512, 150, "spawn child", 1, depth-1);
+        process2 = create(spawn, 512, 150, "spawn child", 1, depth-1);
         resume(process1);
         resume(process2);
         chprio(currpid, getprio(currpid) - 1);

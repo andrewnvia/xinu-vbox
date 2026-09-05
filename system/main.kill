@@ -1,30 +1,53 @@
-/*  main.kill  - main */
+/*  main.c  - main */
 
 #include <xinu.h>
+#include <stdarg.h>
+
+void sync_printf(char *fmt, ...)
+{
+    	intmask mask = disable();
+	void *arg = __builtin_apply_args();
+	__builtin_apply((void*)kprintf, arg, 100);
+	restore(mask);
+}
+
+void print_processes() 
+{
+	uint32 i;
+	uint32 j;
+	struct	procent	*prptr;
+	struct	procent	*childptr;
+	for (i = 0; i < NPROC; i++) {
+		prptr = &proctab[i];
+		if (prptr->prstate == PR_FREE) {  /* skip unused slots	*/
+			continue;
+		}
+		sync_printf("P%3d %-16s:: ",
+			i, prptr->prname);
+		for (j = 0; j < NPROC; j++) {
+			childptr = &proctab[j];
+			if (childptr->prstate == PR_FREE || childptr->prparent != i) {  /* skip unused slots	*/
+				continue;
+			}
+			sync_printf("%3d ", j);
+		}
+		sync_printf("\n");
+	}
+
+	sync_printf("\n-----------------------------------------------------------------------\n\n");
+}
 
 process	main(void)
 {
-	pid32	shpid;		/* Shell process ID */
+	pid32	root;
 
-	printf("\n\n");
+	/* Spawn tree of processes */
 
-	/* Create a local file system on the RAM disk */
+    resume(root = create(spawn, 512, 150, "spawn root", 1, 6));
 
-	lfscreate(RAM0, 40, 20480);
+	print_processes();
+	kill(root);
+	print_processes();
 
-	/* Run the Xinu shell */
-
-	recvclr();
-	resume(shpid = create(shell, 8192, 50, "shell", 1, CONSOLE));
-
-	/* Wait for shell to exit and recreate it */
-
-	while (TRUE) {
-	    if (receive() == shpid) {
-		sleepms(200);
-		kprintf("\n\nMain process recreating shell\n\n");
-		resume(shpid = create(shell, 4096, 20, "shell", 1, CONSOLE));
-	    }
-	}
 	return OK;
 }
