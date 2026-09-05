@@ -56,4 +56,3 @@ dkms.conf
 compile/.defs
 compile/.vers_num
 compile/version
-compile/version
