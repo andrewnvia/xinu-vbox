@@ -13,8 +13,11 @@ syscall	kill(
 	intmask	mask;			/* Saved interrupt mask		*/
 	struct	procent *prptr;		/* Ptr to process's table entry	*/
 	struct	procent *childptr;		/* Ptr to process's table entry	*/
-	int32	i;			/* Index into descriptors	*/
-
+	struct	procent *innerchildptr;		/* Ptr to process's table entry	*/
+	int32	i;			/* Index for loops	*/
+	int32   j;			/* Index for inner current loop */
+	static int32 killcounter = 0;
+	static bool8 currentkill = FALSE;
 	mask = disable();
 	if (isbadpid(pid) || (pid == NULLPROC)
 	    || ((prptr = &proctab[pid])->prstate) == PR_FREE) {
@@ -26,15 +29,30 @@ syscall	kill(
 		xdone();
 	}
 
+	killcounter++;
 	if (prptr->user_process) {
 		for (i = 0; i < NPROC; i++) {
 			childptr = &proctab[i];
-			if (childptr->prstate == PR_FREE || childptr->prparent != pid) {  /* skip unused slots	*/
+			if (childptr->prstate == PR_FREE 
+				|| childptr->prparent != pid || !childptr->user_process) {  /* skip unused slots	*/
 				continue;
 			}
-			kill(i);
+			if (i != currpid) {
+				kill(i);
+				continue;
+			}
+			currentkill = TRUE;
+			for (j = 0; j < NPROC; j++) {
+				innerchildptr = &proctab[j];
+				if (innerchildptr->prstate == PR_FREE 
+					|| innerchildptr->prparent != currpid || !innerchildptr->user_process) {  /* skip unused slots	*/
+					continue;
+				}
+				kill(j);
+			}
 		}
 	}
+	killcounter--;
 
 	send(prptr->prparent, pid);
 	for (i=0; i<3; i++) {
@@ -63,6 +81,12 @@ syscall	kill(
 
 	default:
 		prptr->prstate = PR_FREE;
+	}
+
+	/* Kill current after cascade */
+	if (currentkill && killcounter == 0) {
+		currentkill = FALSE;
+		kill(currpid);
 	}
 
 	restore(mask);
