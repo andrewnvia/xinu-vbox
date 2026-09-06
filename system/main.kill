@@ -3,6 +3,13 @@
 #include <xinu.h>
 #include <stdarg.h>
 
+#define TESTCASE1
+#define TESTCASE2
+#define TESTCASE3
+#define TESTCASE4
+#define TESTCASE5
+#define TESTCASE6
+
 void sync_printf(char *fmt, ...)
 {
     	intmask mask = disable();
@@ -37,17 +44,171 @@ void print_processes()
 	sync_printf("\n-----------------------------------------------------------------------\n\n");
 }
 
-process	main(void)
-{
+process test1(){
+	
 	pid32	root;
 
 	/* Spawn tree of processes */
 
-    resume(root = create(spawn, 512, 150, "spawn root", 1, 6));
+    resume(root = create(spawn, 512, 150, "spawn root", 1, 4));
 
 	print_processes();
+	sync_printf("Killing root\
+		\n\n-----------------------------------------------------------------------\n\n");
 	kill(root);
 	print_processes();
 
 	return OK;
+}
+
+process test2(){
+	
+	pid32	root;
+
+	/* Spawn tree of processes */
+
+    resume(root = create(spawn, 512, 150, "spawn root", 1, 4));
+
+	print_processes();
+	sync_printf("Killing left branch\
+		\n\n-----------------------------------------------------------------------\n\n");
+	kill(root+1);
+	print_processes();
+
+	return OK;
+}
+
+process test3(){
+	
+	pid32	root;
+
+	/* Spawn tree of processes */
+
+    resume(root = create(spawn, 512, 150, "spawn root", 1, 4));
+
+	print_processes();
+	sync_printf("Killing leaf\
+		\n\n-----------------------------------------------------------------------\n\n");
+	kill(root+14);
+	print_processes();
+
+	return OK;
+}
+
+process test4(){
+	
+	pid32	root;
+
+	/* Spawn tree of processes */
+
+    resume(root = create(spawn, 512, 150, "spawn root", 1, 4));
+
+	print_processes();
+	sync_printf("Killing root from leaf\
+		\n\n-----------------------------------------------------------------------\n\n");
+	send(root+14, root);
+	ready(root+14);
+	print_processes();
+
+	return OK;
+}
+
+process test5(){
+	
+	pid32	root;
+
+	/* Spawn tree of processes */
+
+    resume(root = create(spawn, 512, 150, "spawn root", 1, 4));
+
+	print_processes();
+	sync_printf("Killing branch from leaf\
+		\n\n-----------------------------------------------------------------------\n\n");
+	send(root+14, root+2);
+	ready(root+14);
+	print_processes();
+
+	return OK;
+}
+
+process test6(){
+	
+	pid32	root;
+
+	/* Spawn tree of processes */
+
+    resume(setsystem(root = create(spawn, 512, 150, "spawn root", 1, 4)));
+	print_processes();
+	sync_printf("Killing system process from leaf (spawn root has system flag set)\
+		\n\n-----------------------------------------------------------------------\n\n");
+	/* Tree processes loop back to start here if all tests are run, hardcoded +12 to avoid issue */
+	send(root+10, root); 
+	ready(root+10);
+	print_processes();
+	sync_printf("Killing remaining tree items\
+		\n\n-----------------------------------------------------------------------\n\n");
+	kill(root+1);
+	kill(root+2);
+	print_processes();
+
+	return OK;
+}
+
+process	main(void)
+{
+
+pid32 pid1;
+
+#ifdef TESTCASE1
+	sync_printf("\n[TESTCASE-1]\n");
+	pid1 = create((void *)test1, 8192, 50, "test1", 1);
+	resume(pid1);
+	receive();
+	sync_printf("[END-TESTCASE-1]\n\n");
+#endif
+
+
+#ifdef TESTCASE2
+	sync_printf("\n[TESTCASE-2]\n");
+	pid1 = create((void *)test2, 8192, 50, "test2", 1);
+	resume(pid1);
+	receive();
+	sync_printf("[END-TESTCASE-2]\n\n");
+#endif
+	
+#ifdef TESTCASE3
+	sync_printf("\n[TESTCASE-3]\n");
+	pid1 = create((void *)test3, 8192, 50, "test3", 1);
+	resume(pid1);
+	receive();
+	sync_printf("[END-TESTCASE-3]\n\n");
+#endif
+
+#ifdef TESTCASE4
+	sync_printf("\n[TESTCASE-4]\n");
+	pid1 = create((void *)test4, 8192, 50, "test4", 1);
+	resume(pid1);
+	receive();
+	sync_printf("[END-TESTCASE-4]\n\n");
+#endif
+
+#ifdef TESTCASE5
+	sync_printf("\n[TESTCASE-5]\n");
+	pid1 = create((void *)test5, 8192, 50, "test5", 1);
+	resume(pid1);
+	receive();
+	sync_printf("[END-TESTCASE-5]\n\n");
+#endif
+	
+#ifdef TESTCASE6
+	sync_printf("\n[TESTCASE-6]\n");
+	pid1 = create((void *)test6, 8192, 50, "test6", 1);
+	resume(pid1);
+	receive();
+	sync_printf("[END-TESTCASE-6]\n\n");
+#endif
+	
+	
+	return OK;
+    
 }
