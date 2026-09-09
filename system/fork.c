@@ -2,8 +2,6 @@
 
 #include <xinu.h>
 
-local	int newpid();
-
 /*------------------------------------------------------------------------
  *  fork  -  Create forked process nearly identical to current
  *------------------------------------------------------------------------
@@ -18,12 +16,16 @@ pid32	fork(void)
     char		*name;		/* Name (for debugging)		*/
 
     /* Values created for new process   */
-	uint32		savsp, *pushsp;
+	uint32		*pushsp;
 	intmask 	mask;    	/* Interrupt mask		*/
 	pid32		pid;		/* Stores new process id	*/
 	struct	procent	*prptr, *oldptr;		/* Pointer to proc. table entry */
 	int32		i;
 	uint32		*saddr;		/* Stack address		*/
+
+    /* Values used for constructing stack   */
+    uint32 baseoffset, stackoffset;
+	unsigned long	*sp, *fp, *copyptr;
 
 	mask = disable();
 
@@ -68,34 +70,45 @@ pid32	fork(void)
 	prptr->prdesc[1] = CONSOLE;
 	prptr->prdesc[2] = CONSOLE;
 
-	/* Initialize stack as if the process was called		*/
+    /* Create base of stack */
+    *saddr = STACKMAGIC;
 
-	*saddr = STACKMAGIC;
-	savsp = (uint32)saddr;
+    /* Copy stack with modified FPs */
+    sp = (unsigned long *)ebp;
+    fp = (unsigned long *)ebp;
+    baseoffset = prptr->prstkbase - oldptr->prstkbase;
+    stackoffset =  (uint32 *)sp - (uint32 *)oldptr->prstkbase;
+    copyptr = (unsigned long *)(saddr + stackoffset);
+    saddr = (uint32 *)copyptr;
 
+    while (sp < (unsigned long *)oldptr->prstkbase) {
+        for (; sp < fp; sp++){
+            *copyptr = *sp;
+            copyptr++;
+        }
+		if (*sp == STACKMAGIC)
+			break;
+        *copyptr = *sp + baseoffset;
+		fp = (unsigned long *) *sp++;
+        copyptr++;
+		if (fp <= sp) {
+			kprintf("bad stack, fp (%08X) <= sp (%08X)\n", fp, sp);
+			return SYSERR;
+		}
+	}
 	/* Recreating the stack of process 5 in the main.fork testbench */
-    *--saddr = 0;
-    *--saddr = (long)INITRET;
-    *--saddr = savsp;
-    *--saddr = 0;
-    *--saddr = 0;
-    *--saddr = 0;
-    *--saddr = 0;
-    *--saddr = 0;
-    *--saddr = 0;
-    *--saddr = (long) funcaddr;
-    *--saddr = savsp - 12;
+    
 	*--saddr = mask;	/* Copy interrupts */
 
 	/* Basically, the following emulates an x86 "pushal" instruction*/
 
-	*--saddr = NPROC;			/* %eax */
+	*--saddr = NPROC;		/* %eax */
 	*--saddr = 0;			/* %ecx */
 	*--saddr = 0;			/* %edx */
 	*--saddr = ebx;			/* %ebx */
 	*--saddr = 0;			/* %esp; value filled in below	*/
 	pushsp = saddr;			/* Remember this location	*/
-	*--saddr = savsp;		/* %ebp (while finishing ctxsw)	*/
+	*--saddr = ebp + baseoffset;		/* %ebp (while finishing ctxsw)	*/
 	*--saddr = esi;			/* %esi */
 	*--saddr = edi;			/* %edi */
 	*pushsp = (unsigned long) (prptr->prstkptr = (char *)saddr);
@@ -103,27 +116,4 @@ pid32	fork(void)
 	insert(pid, readylist, prptr->prprio);
 	restore(mask);
 	return pid;
-}
-
-/*------------------------------------------------------------------------
- *  newpid  -  Obtain a new (free) process ID
- *------------------------------------------------------------------------
- */
-local	pid32	newpid(void)
-{
-	uint32	i;			/* Iterate through all processes*/
-	static	pid32 nextpid = 1;	/* Position in table to try or	*/
-					/*   one beyond end of table	*/
-
-	/* Check all NPROC slots */
-
-	for (i = 0; i < NPROC; i++) {
-		nextpid %= NPROC;	/* Wrap around to beginning */
-		if (proctab[nextpid].prstate == PR_FREE) {
-			return nextpid++;
-		} else {
-			nextpid++;
-		}
-	}
-	return (pid32) SYSERR;
 }
