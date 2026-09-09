@@ -10,7 +10,7 @@ local	int newpid();
  */
 pid32	fork(void)
 {
-    void		*funcaddr = INITRET;	/* Address of the function	*/
+    void		*funcaddr;	/* Address of the function	*/
     uint32	ssize = 8192;		/* Stack size in bytes		*/
     pri16		priority = 50;	/* Process priority > 0		*/
     char		name[PNMLEN]= "copy attempt";		/* Name (for debugging)		*/
@@ -64,8 +64,6 @@ pid32	fork(void)
 
 	*saddr = STACKMAGIC;
 	savsp = (uint32)saddr;
-    kprintf("%X\n",funcaddr);
-    kprintf("%X\n",prptr->prstkbase);
 
 	/* Recreating the stack of process 5 in the main.fork testbench */
     *--saddr = 0;
