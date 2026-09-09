@@ -2,6 +2,8 @@
 
 #include <xinu.h>
 
+local bool8	cascade(pid32, pid32);
+local syscall killproc(pid32);
 /*------------------------------------------------------------------------
  *  kill  -  Kill a process and remove it from the system
  *------------------------------------------------------------------------
@@ -12,50 +14,96 @@ syscall	kill(
 {
 	intmask	mask;			/* Saved interrupt mask		*/
 	struct	procent *prptr;		/* Ptr to process's table entry	*/
-	struct	procent *childptr;		/* Ptr to process's table entry	*/
-	struct	procent *innerchildptr;		/* Ptr to process's table entry	*/
-	int32	i;			/* Index for loops	*/
-	int32   j;			/* Index for inner current loop */
-	static int32 killcounter = 0;
-	static bool8 currentkill = FALSE;
+    pid32 current, rootparent;
+    bool8 killcurrent;
 	mask = disable();
+    current = currpid;
 	if (isbadpid(pid) || (pid == NULLPROC)
 	    || ((prptr = &proctab[pid])->prstate) == PR_FREE) {
 		restore(mask);
 		return SYSERR;
 	}
+    rootparent = prptr->prparent;
 
-	if (--prcount <= 1) {		/* Last user process completes	*/
-		xdone();
+    if (prptr->user_process) {
+        killcurrent = cascade(pid, current);
+    }
+    if (current != pid) {
+        if (killproc(pid) == OK) {
+            if (--prcount <= 1) {		/* Last user process completes	*/
+                kprintf("MAJOR ERROR! Impossible for this to be last process, current is still running!\n");
+                xdone();
+            }
+        }
+    }
+
+	send(rootparent, pid); // ONLY SHOULD HAPPEN FOR ROOT PROCESS AND ROOT NEEDS TO BE ALREADY DEAD IF NOT CURRENTLY RUNNING
+    
+    if ((killcurrent || current == pid)) {
+        if (--prcount <= 1) {		/* Last user process completes	*/
+            xdone();
+        }
+        killproc(current);
+    }
+	restore(mask);
+	return OK;
+}
+
+local bool8 cascade(pid32 pid, pid32 current){
+    int32 i, j;     /* loop indices */
+	struct	procent *childptr, *innerptr;		/* Ptr to process's table entry	*/
+    bool8 hascurrent;
+
+    hascurrent = FALSE;
+    for (i = 0; i < NPROC; i++) {
+        childptr = &proctab[i];
+        if (childptr->prstate == PR_FREE 
+            || childptr->prparent != pid || !childptr->user_process) {  /* skip unused slots	*/
+            continue;
+        }
+        if (i != current) {
+            if (!hascurrent) {
+                hascurrent = cascade(i, current);
+            } else {
+                cascade(i, current);
+            }
+            if (killproc(i) == OK) {
+                if (--prcount <= 1) {		/* Last user process completes	*/
+                    kprintf("MAJOR ERROR! Inner cascade process should not be last \n");
+                    xdone();
+                }
+            }
+            continue;
+        }
+        hascurrent = TRUE;
+        for (j = 0; j < NPROC; j++) {
+            innerptr = &proctab[j];
+            if (innerptr->prstate == PR_FREE 
+                || innerptr->prparent != current || !innerptr->user_process) {  /* skip unused slots	*/
+                continue;
+            }
+            cascade(j, current);
+            if (killproc(j) == OK) {
+                if (--prcount <= 1) {		/* Last user process completes	*/
+                    kprintf("MAJOR ERROR! Inner cascade process should not be last \n");
+                    xdone();
+                }
+            }
+        }
+    }
+    
+    return hascurrent;
+}
+
+local syscall killproc(pid32 pid){
+	struct	procent *prptr;		/* Ptr to process's table entry	*/
+    int32 i;
+	if (isbadpid(pid) || (pid == NULLPROC)
+	    || ((prptr = &proctab[pid])->prstate) == PR_FREE) {
+		return SYSERR;
 	}
 
-	killcounter++;
-	if (prptr->user_process) {
-		for (i = 0; i < NPROC; i++) {
-			childptr = &proctab[i];
-			if (childptr->prstate == PR_FREE 
-				|| childptr->prparent != pid || !childptr->user_process) {  /* skip unused slots	*/
-				continue;
-			}
-			if (i != currpid) {
-				kill(i);
-				continue;
-			}
-			currentkill = TRUE;
-			for (j = 0; j < NPROC; j++) {
-				innerchildptr = &proctab[j];
-				if (innerchildptr->prstate == PR_FREE 
-					|| innerchildptr->prparent != currpid || !innerchildptr->user_process) {  /* skip unused slots	*/
-					continue;
-				}
-				kill(j);
-			}
-		}
-	}
-	killcounter--;
-
-	send(prptr->prparent, pid);
-	for (i=0; i<3; i++) {
+	for (i=0; i<3; i++) { //HAPPENS FOR ALL KILLED
 		close(prptr->prdesc[i]);
 	}
 	freestk(prptr->prstkbase, prptr->prstklen);
@@ -82,13 +130,5 @@ syscall	kill(
 	default:
 		prptr->prstate = PR_FREE;
 	}
-
-	/* Kill current after cascade */
-	if (currentkill && killcounter == 0) {
-		currentkill = FALSE;
-		kill(currpid);
-	}
-
-	restore(mask);
-	return OK;
+    return OK;
 }
