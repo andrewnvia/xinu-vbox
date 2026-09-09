@@ -91,9 +91,8 @@ pid32	fork(void)
 	*--saddr = 0;			/* %esi */
 	*--saddr = 0;			/* %edi */
 	*pushsp = (unsigned long) (prptr->prstkptr = (char *)saddr);
-    resched_cntl(DEFER_START);
-    resume(6);
-    resched_cntl(DEFER_STOP);
+	prptr->prstate = PR_READY;
+	insert(pid, readylist, prptr->prprio);
 	restore(mask);
 	return pid;
 }
