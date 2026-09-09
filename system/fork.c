@@ -96,7 +96,7 @@ pid32	fork(void)
 			return SYSERR;
 		}
 	}
-	/* Recreating the stack of process 5 in the main.fork testbench */
+	/* Creating the ctxsw stack to be switched to */
     
 	*--saddr = mask;	/* Copy interrupts */
 
