@@ -5,31 +5,39 @@
 local	int newpid();
 
 /*------------------------------------------------------------------------
- *  fork  -  Create forked process
+ *  fork  -  Create forked process nearly identical to current
  *------------------------------------------------------------------------
  */
 pid32	fork(void)
 {
+    /* Values gathered from original process    */
+    unsigned long ebx, ebp, esi, edi;
     void		*funcaddr;	/* Address of the function	*/
-    uint32	ssize = 8192;		/* Stack size in bytes		*/
-    pri16		priority = 50;	/* Process priority > 0		*/
-    char		name[PNMLEN]= "copy attempt";		/* Name (for debugging)		*/
-    unsigned long ebx, esi, edi;
+    uint32	ssize;		/* Stack size in bytes		*/
+    pri16		priority;	/* Process priority > 0		*/
+    char		*name;		/* Name (for debugging)		*/
 
-	asm("movl %%ebx, %0\n" :"=r"(ebx));
-	asm("movl 4(%%ebp), %0\n" :"=r"(funcaddr));
-	asm("movl %%esi, %0\n" :"=r"(esi));
-	asm("movl %%edi, %0\n" :"=r"(edi));
-
+    /* Values created for new process   */
 	uint32		savsp, *pushsp;
 	intmask 	mask;    	/* Interrupt mask		*/
 	pid32		pid;		/* Stores new process id	*/
-	struct	procent	*prptr;		/* Pointer to proc. table entry */
+	struct	procent	*prptr, *oldptr;		/* Pointer to proc. table entry */
 	int32		i;
 	uint32		*saddr;		/* Stack address		*/
 
 	mask = disable();
-    
+
+    oldptr = &proctab[getpid()];
+
+	asm("movl %%ebx, %0\n" :"=r"(ebx));
+	asm("movl %%ebp, %0\n" :"=r"(ebp));
+	asm("movl %%esi, %0\n" :"=r"(esi));
+	asm("movl %%edi, %0\n" :"=r"(edi));
+	asm("movl 4(%%ebp), %0\n" :"=r"(funcaddr));
+    ssize = oldptr->prstklen;
+    priority = oldptr->prprio;
+    name = oldptr->prname;
+
 	if (ssize < MINSTK)
 		ssize = MINSTK;
 	ssize = (uint32) roundmb(ssize);
@@ -88,8 +96,8 @@ pid32	fork(void)
 	*--saddr = 0;			/* %esp; value filled in below	*/
 	pushsp = saddr;			/* Remember this location	*/
 	*--saddr = savsp;		/* %ebp (while finishing ctxsw)	*/
-	*--saddr = 0;			/* %esi */
-	*--saddr = 0;			/* %edi */
+	*--saddr = esi;			/* %esi */
+	*--saddr = edi;			/* %edi */
 	*pushsp = (unsigned long) (prptr->prstkptr = (char *)saddr);
 	prptr->prstate = PR_READY;
 	insert(pid, readylist, prptr->prprio);
